@@ -1,15 +1,14 @@
 # simworld
 
-a (likely CLI-based) simulated natural environment written in rust
+a (likely CLI-based) simulated natural environment written in zig
 
 
 ## ideas
 
 ### engine
 
-+ library-esque engine in rust, with frontend and mods all written in lua
-  + lua chosen over rhai predominantly because i'm more familiar with it, and
-  it has first-class function support, which rhai doesn't
++ library-esque engine in zig, with frontend and mods all written in lua
+  + some way to specify mod dependencies
 + tick-based, with separate rendering and simulation threads
 + save/load/create worlds
 + mod api written such that modded creatures/biomes/etc can hook into general
@@ -41,6 +40,7 @@ a (likely CLI-based) simulated natural environment written in rust
   + hunger
   + thirst
 + line of sight
++ random names?
 
 
 ### environment
@@ -59,3 +59,46 @@ a (likely CLI-based) simulated natural environment written in rust
 
 
 ## design
+
+### data structures
+
+#### engine
+
++ world
+  + size
+  + tiles
+  + tiletypes
+  + creatures
+
++ tile
+  + height // no x/y pos bc thats stored as index into world
+  + type
+  + biome
+  + weather // see environment
+
++ tiletype
+  + name
+  + description
+  + texture
+  + attributes?
+
+#### attributes
+
+#### creatures
+
++ creature
+  + type
+  + position
+  + age
+
++ creaturetype
+  + name
+  + description
+  + texture
+  + attributes?
+
+#### environment
+
++ weather
+
++ biome

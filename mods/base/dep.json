@@ -1,0 +1,9 @@
+{
+  "name": "base",
+  "description": "core game functionality",
+  "version": "0.0.1",
+  "author": "jans heikkinen",
+
+  "dependencies": [],
+  "optional_dependencies": [],
+}
