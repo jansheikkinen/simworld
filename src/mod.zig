@@ -6,10 +6,9 @@ const ziglua = @import("ziglua");
 const Lua = ziglua.Lua;
 const FnReg = ziglua.FnReg;
 
-const world = @import("world.zig");
-const World = world.World;
-const TileType = world.TileType;
+const game_lib = @import("game.zig");
 
+const TileType = @import("tile.zig").TileType;
 const CreatureType = @import("creature.zig").CreatureType;
 
 
@@ -20,25 +19,59 @@ pub const LuaAPI = struct {
     FnReg { .name = "initTileType", .func = ziglua.wrap(TileType.fromLua) },
     FnReg { .name = "initCreatureType", .func = ziglua.wrap(CreatureType.fromLua) },
   };
-
   const error_messages = [_][]const u8 {
     "[registerMod]: the first argument must be a string",
     "[registerMod]: the second argument must be an array of tiletype userdata",
     "[registerMod]: the third argument must be an array of creaturetype userdata",
   };
 
-  const world_table = "_World";
+  const game_table = "_Game";
 
-  pub fn initAPI(ctx: *Lua) void {
-    ctx.openLibs();
-    ctx.newLib(&functions);
-    ctx.setGlobal(name);
+  lua: Lua,
+
+
+  pub fn init(allocator: std.mem.Allocator) !LuaAPI {
+    return LuaAPI {
+      .lua = try Lua.init(allocator)
+    };
   }
 
 
-  pub fn pushWorld(ctx: *Lua, _world: *World) void {
-    ctx.pushLightUserdata(_world);
-    ctx.setGlobal(world_table);
+  pub fn deinit(self: *LuaAPI) void {
+    self.lua.deinit();
+  }
+
+
+  fn initAPI(self: *LuaAPI) void {
+    self.lua.openLibs();
+    self.lua.newLib(&functions);
+    self.lua.setGlobal(name);
+  }
+
+
+  fn pushGame(self: *LuaAPI, _game: *game_lib.Game) void {
+    self.lua.pushLightUserdata(_game);
+    self.lua.setGlobal(game_table);
+  }
+
+
+  fn loadMods(self: *LuaAPI, _game: *game_lib.Game) !void {
+    const path = try std.mem.concatWithSentinel(_game.allocator, u8,
+      &[_][]const u8 {
+        _game.options.base_path,
+        _game.options.mod_path,
+        "base/init.lua"
+      }, 0);
+    defer _game.allocator.free(path);
+
+    try self.lua.doFile(path);
+  }
+
+
+  pub fn loadAPIAndMods(self: *LuaAPI, _game: *game_lib.Game) !void {
+    self.initAPI();
+    self.pushGame(_game);
+    try self.loadMods(_game);
   }
 
 
@@ -81,25 +114,25 @@ pub const LuaAPI = struct {
   ///                tiles: ?[]TileType,
   ///                creatures: ?[]CreatureType) void
   fn registerMod(ctx: *Lua) i32 {
-    // get world data struct from lua
-    _ = ctx.getGlobal(world_table) catch unreachable;
-    var world_data = ctx.toUserdata(World, -1) catch unreachable;
+    // get game data struct from lua
+    _ = ctx.getGlobal(game_table) catch unreachable;
+    var game_data = ctx.toUserdata(game_lib.Game, -1) catch unreachable;
     ctx.pop(1); // ctx.getGlobal
 
     // get arguments
     const mod_name = ctx.toString(-3)
       catch std.debug.panic("{s}\n", .{ error_messages[0] });
 
-    const tiles = userdataArrayToSlice(ctx, -2, TileType, world_data.allocator)
+    const tiles = userdataArrayToSlice(ctx, -2, TileType, game_data.allocator)
       catch std.debug.panic("{s}\n", .{ error_messages[1] });
 
     const creatures = userdataArrayToSlice(ctx, -1, CreatureType,
-      world_data.allocator)
+      game_data.allocator)
       catch std.debug.panic("{s}\n", .{ error_messages[2] });
 
     // create mod and add to list of mods
     const mod = Mod.init(mod_name[0..std.mem.len(mod_name)], tiles, creatures);
-    world_data.mods.append(mod) catch unreachable; // TODO: handle error
+    game_data.mods.append(mod) catch unreachable; // TODO: handle error
 
     return 0;
   }
