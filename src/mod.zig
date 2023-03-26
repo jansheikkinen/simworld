@@ -8,21 +8,43 @@ const FnReg = ziglua.FnReg;
 
 const game_lib = @import("game.zig");
 
-const TileType = @import("tile.zig").TileType;
+const tile_lib = @import("tile.zig");
+const Tile = tile_lib.Tile;
+const TileType = tile_lib.TileType;
+
 const CreatureType = @import("creature.zig").CreatureType;
+const WorldGenerator = @import("world.zig").WorldGenerator;
 
 
 pub const LuaAPI = struct {
   const name = "core";
   const functions = [_]FnReg {
-    FnReg { .name = "registerMod", .func = ziglua.wrap(registerMod) },
-    FnReg { .name = "initTileType", .func = ziglua.wrap(TileType.fromLua) },
-    FnReg { .name = "initCreatureType", .func = ziglua.wrap(CreatureType.fromLua) },
+    FnReg {
+      .name = "registerMod",
+      .func = ziglua.wrap(registerMod)
+    },
+    FnReg {
+      .name = "initTileType",
+      .func = ziglua.wrap(TileType.fromLua)
+    },
+    FnReg {
+      .name = "initCreatureType",
+      .func = ziglua.wrap(CreatureType.fromLua)
+    },
+    FnReg {
+      .name = "initWorldGenerator",
+      .func = ziglua.wrap(WorldGenerator.fromLua)
+    },
+    FnReg {
+      .name = "initTile",
+      .func = ziglua.wrap(Tile.fromLua)
+    },
   };
   const error_messages = [_][]const u8 {
     "[registerMod]: the first argument must be a string",
     "[registerMod]: the second argument must be an array of tiletype userdata",
     "[registerMod]: the third argument must be an array of creaturetype userdata",
+    "[registerMod]: the fourth argument must be an arra of worldgenerator userdata",
   };
 
   const game_table = "_Game";
@@ -75,7 +97,7 @@ pub const LuaAPI = struct {
   }
 
 
-  fn userdataArrayToSlice(ctx: *Lua, index: i32,
+  pub fn userdataArrayToSlice(ctx: *Lua, index: i32,
                      comptime T: type, allocator: std.mem.Allocator) ![]T {
     // make a copy of the array on the top of the stack so we can pass
     // both positive and negative values for index
@@ -120,18 +142,24 @@ pub const LuaAPI = struct {
     ctx.pop(1); // ctx.getGlobal
 
     // get arguments
-    const mod_name = ctx.toString(-3)
+    const mod_name = ctx.toString(-4)
       catch std.debug.panic("{s}\n", .{ error_messages[0] });
 
-    const tiles = userdataArrayToSlice(ctx, -2, TileType, game.allocator)
+    const tiles = userdataArrayToSlice(ctx, -3, TileType, game.allocator)
       catch std.debug.panic("{s}\n", .{ error_messages[1] });
 
-    const creatures = userdataArrayToSlice(ctx, -1, CreatureType,
+    const creatures = userdataArrayToSlice(ctx, -2, CreatureType,
       game.allocator)
       catch std.debug.panic("{s}\n", .{ error_messages[2] });
 
+    const generators = userdataArrayToSlice(ctx, -1, WorldGenerator,
+      game.allocator)
+      catch std.debug.panic("{s}\n", .{ error_messages[3] });
+
+
     // create mod and add to list of mods
-    const mod = Mod.init(mod_name[0..std.mem.len(mod_name)], tiles, creatures);
+    const mod = Mod.init(mod_name[0..std.mem.len(mod_name)], tiles,
+                         creatures, generators);
     game.mods.append(mod) catch unreachable; // TODO: handle error
 
     return 0;
@@ -143,14 +171,17 @@ pub const Mod = struct {
   name: []const u8,
   tiles: []TileType,
   creatures: []CreatureType,
+  generators: []WorldGenerator,
 
   pub fn init(name: []const u8,
               tiles: []TileType,
-              creatures: []CreatureType) Mod {
+              creatures: []CreatureType,
+              generators: []WorldGenerator) Mod {
     return Mod {
       .name = name,
       .tiles = tiles,
       .creatures = creatures,
+      .generators = generators,
     };
   }
 };

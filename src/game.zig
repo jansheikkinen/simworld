@@ -2,7 +2,13 @@
 
 const std = @import("std");
 
-const Mod = @import("mod.zig").Mod;
+const ziglua = @import("ziglua");
+const Lua = ziglua.Lua;
+
+const mod_lib = @import("mod.zig");
+const Mod = mod_lib.Mod;
+const LuaAPI = mod_lib.LuaAPI;
+
 const World = @import("world.zig").World;
 const Tile = @import("tile.zig").Tile;
 const Vector2 = @import("vector.zig").Vector2;
@@ -38,26 +44,30 @@ pub const Game = struct {
     for (self.mods.items) |mod| {
       self.allocator.free(mod.tiles);
       self.allocator.free(mod.creatures);
+      self.allocator.free(mod.generators);
     }
 
     self.mods.deinit();
   }
 
 
-  pub fn newDebugWorld(self: *Game, size: usize) !void {
+  pub fn newWorld(self: *Game, ctx: *Lua,
+                  size: usize, generator: Vector2(usize)) !void {
     if (self.mods.items.len < 1) return error.MissingBaseMod;
-    if (self.mods.items[0].tiles.len < 2) return error.WorldGenTwoTiles;
-
     self.world = try World.init(size, self.allocator);
+    self.allocator.free(self.world.?.tiles);
 
-    if (self.world) |world| {
-      var i: u16 = 0;
-      while (i < world.tiles.len) : (i += 1) {
-        const vec = Vector2(usize).fromIndex(i, world.size);
-        world.tiles[i] = Tile.init(
-          Vector2(usize).init(0, (vec.x + vec.y) % 2),
-          i % std.math.maxInt(u16));
-      }
-    }
+    ctx.pushInteger(self.mods.items[generator.x]
+      .generators[generator.y].reference);
+    if (ctx.getTable(ziglua.registry_index) != ziglua.LuaType.function)
+      return error.ExpectedFunction;
+
+    ctx.pushInteger(@intCast(isize, size));
+
+    ctx.call(1, 1);
+
+    const tiles = try LuaAPI.userdataArrayToSlice(ctx, -1, Tile, self.allocator);
+
+    self.world.?.tiles = tiles;
   }
 };

@@ -12,4 +12,20 @@ local creatures = {
     core.initCreatureType("c2", "second creature"),
 }
 
-core.registerMod("base", tiles, creatures)
+local generators = {
+  core.initWorldGenerator("wg1", function(_)
+    print("Howdy, world!")
+  end),
+  core.initWorldGenerator("wg2", function(size)
+    local tiless = {}
+    for y = 0, size do
+      for x = 0, size do
+        tiless[(y * size) + x + 1] = core.initTile(0, (x + y) % 2, 0)
+      end
+    end
+
+    return tiless
+  end),
+}
+
+core.registerMod("base", tiles, creatures, generators)
