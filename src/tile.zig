@@ -4,20 +4,32 @@ const std = @import("std");
 const Lua = @import("ziglua").Lua;
 
 const World = @import("world.zig").World;
+const Game = @import("game.zig").Game;
+const Vector2 = @import("vector.zig").Vector2;
 
 
 pub const Tile = struct {
-  kind: usize,
+  kind: Vector2(usize),
   height: u16,
 
 
-  pub fn init(kind: usize, height: u16) Tile {
+  pub fn init(kind: Vector2(usize), height: u16) Tile {
     return Tile { .kind = kind, .height = height };
   }
 
 
-  pub fn getName(self: Tile, world: *const World) []const u8 {
-    return world.tile_types.items[self.kind].name;
+  pub fn getTileType(self: Tile, game: *const Game) *const TileType {
+    return &game.mods.items[self.kind.x].tiles[self.kind.y];
+  }
+
+
+  pub fn getName(self: Tile, game: *const Game) []const u8 {
+    return self.getTileType(game).name;
+  }
+
+
+  pub fn getDescription(self: Tile, game: *const Game) []const u8 {
+    return self.getTileType(game).description;
   }
 };
 

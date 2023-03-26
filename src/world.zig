@@ -9,9 +9,9 @@ const tile_lib = @import("tile.zig");
 
 
 pub const World = struct {
-  size: usize = 16,
   allocator: std.mem.Allocator,
-  tiles: std.ArrayList(tile_lib.Tile),
+  size: usize = 16,
+  tiles: []tile_lib.Tile,
   creatures: std.ArrayList(creature_lib.Creature),
 
 
@@ -19,15 +19,14 @@ pub const World = struct {
     return World {
       .size = size,
       .allocator = allocator,
-      .tiles = try std.ArrayList(tile_lib.Tile)
-        .initCapacity(allocator, size * size),
+      .tiles = try allocator.alloc(tile_lib.Tile, size * size),
       .creatures = std.ArrayList(creature_lib.Creature).init(allocator),
     };
   }
 
 
   pub fn deinit(self: *World) void {
-    self.tiles.deinit();
+    self.allocator.free(self.tiles);
     self.creatures.deinit();
   }
 };

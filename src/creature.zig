@@ -3,23 +3,33 @@
 const std = @import("std");
 const Lua = @import("ziglua").Lua;
 
-const Vector2 = @import("vector.zig").Vector2(usize);
-const World = @import("world.zig").World;
+const Vector2 = @import("vector.zig").Vector2;
+const Game = @import("game.zig").Game;
 
 
 pub const Creature = struct {
-  kind: usize,
+  kind: Vector2(usize),
   age: usize,
-  position: Vector2,
+  position: Vector2(usize),
 
 
-  pub fn init(kind: usize, x: usize, y: usize) Creature {
-    return Creature { .kind = kind, .age = 0, .position = Vector2.init(x, y) };
+  pub fn init(kind: Vector2(usize), position: Vector2(usize)) Creature {
+    return Creature { .kind = kind, .age = 0, .position = position };
   }
 
 
-  pub fn getName(self: Creature, world: *const World) []const u8 {
-    return world.creature_types.items[self.kind].name;
+  pub fn getTileType(self: Creature, game: *const Game) *const CreatureType {
+    return &game.mods.items[self.kind.x].creatures[self.kind.y];
+  }
+
+
+  pub fn getName(self: Creature, game: *const Game) []const u8 {
+    return self.getTileType(game).name;
+  }
+
+
+  pub fn getDescription(self: Creature, game: *const Game) []const u8 {
+    return self.getTileType(game).description;
   }
 };
 

@@ -12,12 +12,14 @@ pub fn Vector2(comptime T: type) type {
       return Self { .x = x, .y = y };
     }
 
+
     pub fn add(self: *const Self, other: *const Self) Self {
       return Self {
         .x = self.x + other.x,
         .y = self.y + other.y,
       };
     }
+
 
     pub fn addScalar(self: *const Self, other: T) Self {
       return Self {
@@ -26,12 +28,14 @@ pub fn Vector2(comptime T: type) type {
       };
     }
 
+
     pub fn sub(self: *const Self, other: *const Self) Self {
       return Self {
         .x = self.x - other.x,
         .y = self.y - other.y,
       };
     }
+
 
     pub fn subScalar(self: *const Self, other: T) Self {
       return Self {
@@ -40,13 +44,16 @@ pub fn Vector2(comptime T: type) type {
       };
     }
 
+
     pub fn cross(self: *const Self, other: *const Self) Self {
       unreachable(self, other); // lol no todo!()
     }
 
+
     pub fn dot(self: *const Self, other: *const Self) T {
       return (self.x * other.x) + (self.y * other.y);
     }
+
 
     pub fn scale(self: *const Self, other: T) Self {
       return Self {
@@ -55,13 +62,29 @@ pub fn Vector2(comptime T: type) type {
       };
     }
 
+
     pub fn magnitude(self: *const Self) T {
       return std.math.sqrt(
         std.math.pow(T, self.x, 2) + std.math.pow(T, self.y, 2));
     }
 
+
     pub fn equal(self: *const Self, other: *const Self) bool {
       return self.x == other.x and self.y == other.y;
+    }
+
+
+    pub fn toIndex(self: *const Self, width: T) T {
+      return (self.y * width) + self.x;
+    }
+
+
+    pub fn fromIndex(index: T, width: T) Self {
+      return Self {
+        .x = if (@typeInfo(T) == .Int) @mod(index, width) else index % width,
+        .y = if (@typeInfo(T) == .Int) @divFloor(index, width)
+          else std.math.floor(index / width),
+      };
     }
   };
 }
@@ -121,4 +144,34 @@ test "Vector2 equal" {
   const v1 = Vector2(isize).init(69, 420);
 
   try std.testing.expectEqualDeep(v1, Vector2(isize) { .x = 69, .y = 420 });
+}
+
+test "Vector2 toIndex" {
+  const width: isize = 5;
+
+  var i: isize = 0;
+  var y: isize = 0;
+  while (y < width) : (y += 1) {
+    var x: isize = 0;
+    while (x < width) : (x += 1) {
+      const vec = Vector2(isize).init(x, y);
+      try std.testing.expectEqual(vec.toIndex(width), i);
+      i += 1;
+    }
+  }
+}
+
+test "Vector2 fromIndex" {
+  const width: isize = 5;
+
+  var i: isize = 0;
+  var y: isize = 0;
+  while (y < width) : (y += 1) {
+    var x: isize = 0;
+    while (x < width) : (x += 1) {
+      const vec = Vector2(isize).init(x, y);
+      try std.testing.expectEqualDeep(vec, Vector2(isize).fromIndex(i, width));
+      i += 1;
+    }
+  }
 }

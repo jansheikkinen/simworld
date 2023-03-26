@@ -49,29 +49,29 @@ pub const LuaAPI = struct {
   }
 
 
-  fn pushGame(self: *LuaAPI, _game: *game_lib.Game) void {
-    self.lua.pushLightUserdata(_game);
+  fn pushGame(self: *LuaAPI, game: *game_lib.Game) void {
+    self.lua.pushLightUserdata(game);
     self.lua.setGlobal(game_table);
   }
 
 
-  fn loadMods(self: *LuaAPI, _game: *game_lib.Game) !void {
-    const path = try std.mem.concatWithSentinel(_game.allocator, u8,
+  fn loadMods(self: *LuaAPI, game: *game_lib.Game) !void {
+    const path = try std.mem.concatWithSentinel(game.allocator, u8,
       &[_][]const u8 {
-        _game.options.base_path,
-        _game.options.mod_path,
+        game.options.base_path,
+        game.options.mod_path,
         "base/init.lua"
       }, 0);
-    defer _game.allocator.free(path);
+    defer game.allocator.free(path);
 
     try self.lua.doFile(path);
   }
 
 
-  pub fn loadAPIAndMods(self: *LuaAPI, _game: *game_lib.Game) !void {
+  pub fn loadAPIAndMods(self: *LuaAPI, game: *game_lib.Game) !void {
     self.initAPI();
-    self.pushGame(_game);
-    try self.loadMods(_game);
+    self.pushGame(game);
+    try self.loadMods(game);
   }
 
 
@@ -116,23 +116,23 @@ pub const LuaAPI = struct {
   fn registerMod(ctx: *Lua) i32 {
     // get game data struct from lua
     _ = ctx.getGlobal(game_table) catch unreachable;
-    var game_data = ctx.toUserdata(game_lib.Game, -1) catch unreachable;
+    var game = ctx.toUserdata(game_lib.Game, -1) catch unreachable;
     ctx.pop(1); // ctx.getGlobal
 
     // get arguments
     const mod_name = ctx.toString(-3)
       catch std.debug.panic("{s}\n", .{ error_messages[0] });
 
-    const tiles = userdataArrayToSlice(ctx, -2, TileType, game_data.allocator)
+    const tiles = userdataArrayToSlice(ctx, -2, TileType, game.allocator)
       catch std.debug.panic("{s}\n", .{ error_messages[1] });
 
     const creatures = userdataArrayToSlice(ctx, -1, CreatureType,
-      game_data.allocator)
+      game.allocator)
       catch std.debug.panic("{s}\n", .{ error_messages[2] });
 
     // create mod and add to list of mods
     const mod = Mod.init(mod_name[0..std.mem.len(mod_name)], tiles, creatures);
-    game_data.mods.append(mod) catch unreachable; // TODO: handle error
+    game.mods.append(mod) catch unreachable; // TODO: handle error
 
     return 0;
   }
