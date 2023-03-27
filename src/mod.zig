@@ -39,6 +39,10 @@ pub const LuaAPI = struct {
       .name = "initTile",
       .func = ziglua.wrap(Tile.fromLua)
     },
+    FnReg {
+      .name = "getModID",
+      .func = ziglua.wrap(getModID)
+    },
   };
   const error_messages = [_][]const u8 {
     "[registerMod]: the first argument must be a string",
@@ -164,6 +168,17 @@ pub const LuaAPI = struct {
 
     return 0;
   }
+
+
+  // TODO: a more sophisticated solution that'd allow multithreaded modloading
+  pub fn getModID(ctx: *Lua) i32 {
+    _ = ctx.getGlobal(game_table) catch unreachable;
+    var game = ctx.toUserdata(game_lib.Game, -1) catch unreachable;
+    ctx.pop(1);
+
+    ctx.pushInteger(@intCast(isize, game.mods.items.len));
+    return 1;
+  }
 };
 
 
@@ -183,5 +198,11 @@ pub const Mod = struct {
       .creatures = creatures,
       .generators = generators,
     };
+  }
+
+  pub fn deinit(self: *Mod, allocator: std.mem.Allocator) void {
+    allocator.free(self.tiles);
+    allocator.free(self.creatures);
+    allocator.free(self.generators);
   }
 };

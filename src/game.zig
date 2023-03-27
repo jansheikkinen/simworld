@@ -41,11 +41,9 @@ pub const Game = struct {
   pub fn deinit(self: *Game) void {
     if (self.world != null) self.world.?.deinit();
 
-    for (self.mods.items) |mod| {
-      self.allocator.free(mod.tiles);
-      self.allocator.free(mod.creatures);
-      self.allocator.free(mod.generators);
-    }
+    var i: usize = 0;
+    while (i < self.mods.items.len) : (i += 1)
+      self.mods.items[i].deinit(self.allocator);
 
     self.mods.deinit();
   }

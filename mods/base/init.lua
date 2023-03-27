@@ -2,6 +2,12 @@
 
 -- luacheck: globals core
 
+local function printf(fmt, ...) io.write(string.format(fmt, ...)) end
+
+local MOD_ID = core.getModID()
+printf("[LUA]: Loading mod 0\n")
+
+
 local tiles = {
     core.initTileType("t1", "first tile"),
     core.initTileType("t2", "second tile"),
@@ -20,7 +26,7 @@ local generators = {
     local tiless = {}
     for y = 0, size do
       for x = 0, size do
-        tiless[(y * size) + x + 1] = core.initTile(0, (x + y) % 2, 0)
+        tiless[(y * size) + x + 1] = core.initTile(MOD_ID, (x + y) % 2, 0)
       end
     end
 
