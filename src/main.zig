@@ -40,9 +40,9 @@ pub fn main() anyerror!void {
         i += 1;
 
         if (tile.getTileType(&game).isEqual(game.mods.items[0].tiles[0])) {
-          std.debug.print("# ", .{});
+          std.debug.print("＃", .{});
         } else {
-          std.debug.print(". ", .{});
+          std.debug.print("・", .{});
         }
       }
     }

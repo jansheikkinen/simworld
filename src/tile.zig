@@ -6,6 +6,7 @@ const Lua = @import("ziglua").Lua;
 const World = @import("world.zig").World;
 const Game = @import("game.zig").Game;
 const Vector2 = @import("vector.zig").Vector2;
+const LuaAPI = @import("mod.zig").LuaAPI;
 
 
 pub const Tile = struct {
@@ -41,9 +42,9 @@ pub const Tile = struct {
 
 
   pub fn fromLua(ctx: *Lua) i32 {
-    const x = ctx.toInteger(-3) catch unreachable;
-    const y = ctx.toInteger(-2) catch unreachable;
-    const h = ctx.toInteger(-1) catch unreachable;
+    const x = LuaAPI.expectInteger(ctx, -3);
+    const y = LuaAPI.expectInteger(ctx, -2);
+    const h = LuaAPI.expectInteger(ctx, -1);
 
     const tile = ctx.newUserdata(Tile, 0);
     tile.kind = Vector2(usize).init(@intCast(usize, x), @intCast(usize, y));
@@ -75,8 +76,8 @@ pub const TileType = struct {
 
   /// fn fromLua(name: []const u8, description: []const u8) TileType
   pub fn fromLua(ctx: *Lua) i32 {
-    const name = ctx.toString(-2) catch return @errorToInt(error.WrongType);
-    const desc = ctx.toString(-1) catch return @errorToInt(error.WrongType);
+    const name = LuaAPI.expectString(ctx, -2);
+    const desc = LuaAPI.expectString(ctx, -1);
 
     const tile = ctx.newUserdata(TileType, 0);
     tile.name = name[0..std.mem.len(name)];

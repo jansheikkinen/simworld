@@ -64,7 +64,7 @@ pub const Game = struct {
 
     ctx.call(1, 1);
 
-    const tiles = try LuaAPI.userdataArrayToSlice(ctx, -1, Tile, self.allocator);
+    const tiles = LuaAPI.expectUserdata(ctx, -1, Tile, self.allocator);
 
     self.world.?.tiles = tiles;
   }

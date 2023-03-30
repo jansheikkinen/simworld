@@ -5,7 +5,7 @@ const std = @import("std");
 const ziglua = @import("ziglua");
 const Lua = ziglua.Lua;
 
-const Mod = @import("mod.zig").Mod;
+const LuaAPI = @import("mod.zig").LuaAPI;
 const creature_lib = @import("creature.zig");
 const tile_lib = @import("tile.zig");
 
@@ -40,13 +40,8 @@ pub const WorldGenerator = struct {
 
   /// fn fromLua(name: []const u8, reference: fn) WorldGenerator
   pub fn fromLua(ctx: *Lua) i32 {
-    const name = ctx.toString(-2)
-      catch ctx.raiseErrorStr(
-        "first argument to initWorldGenerator must be a string", .{});
-
-    const reference = ctx.ref(ziglua.registry_index)
-      catch ctx.raiseErrorStr(
-        "second argument to initWorldGenerator must be a function", .{});
+    const name = LuaAPI.expectString(ctx, -2);
+    const reference = LuaAPI.registerFunction(ctx);
 
     const worldgen = ctx.newUserdata(WorldGenerator, 0);
     worldgen.name = name[0..std.mem.len(name)];

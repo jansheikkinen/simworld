@@ -2,10 +2,7 @@
 
 -- luacheck: globals core
 
-local function printf(fmt, ...) io.write(string.format(fmt, ...)) end
-
 local MOD_ID = core.getModID()
-printf("[LUA]: Loading mod 0\n")
 
 
 local tiles = {

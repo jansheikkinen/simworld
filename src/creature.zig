@@ -5,6 +5,7 @@ const Lua = @import("ziglua").Lua;
 
 const Vector2 = @import("vector.zig").Vector2;
 const Game = @import("game.zig").Game;
+const LuaAPI = @import("mod.zig").LuaAPI;
 
 
 pub const Creature = struct {
@@ -46,8 +47,8 @@ pub const CreatureType = struct {
 
   /// fn fromLua(name: []const u8, description: []const u8) CreatureType
   pub fn fromLua(ctx: *Lua) i32 {
-    const name = ctx.toString(-2) catch return @errorToInt(error.WrongType);
-    const desc = ctx.toString(-1) catch return @errorToInt(error.WrongType);
+    const name = LuaAPI.expectString(ctx, -2);
+    const desc = LuaAPI.expectString(ctx, -1);
 
     const creature = ctx.newUserdata(CreatureType, 0);
     creature.name = name[0..std.mem.len(name)];

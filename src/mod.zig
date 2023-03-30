@@ -44,13 +44,6 @@ pub const LuaAPI = struct {
       .func = ziglua.wrap(getModID)
     },
   };
-  const error_messages = [_][]const u8 {
-    "[registerMod]: the first argument must be a string",
-    "[registerMod]: the second argument must be an array of tiletype userdata",
-    "[registerMod]: the third argument must be an array of creaturetype userdata",
-    "[registerMod]: the fourth argument must be an arra of worldgenerator userdata",
-  };
-
   const game_table = "_Game";
 
   lua: Lua,
@@ -101,38 +94,69 @@ pub const LuaAPI = struct {
   }
 
 
-  pub fn userdataArrayToSlice(ctx: *Lua, index: i32,
+  // wanted to make this [:0]const u8 but IT WONT WORK GRAHHHH!!!!!!!!
+  pub fn expectString(ctx: *Lua, index: i32) [*:0]const u8 {
+    return ctx.toString(index)
+      catch std.debug.panic("[CORE]: Expected a string", .{});
+  }
+
+
+  pub fn expectInteger(ctx: *Lua, index: i32) isize {
+    return ctx.toInteger(index)
+      catch std.debug.panic("[CORE]: Expected integer", .{});
+  }
+
+
+  pub fn registerFunction(ctx: *Lua) i32 {
+    return ctx.ref(ziglua.registry_index)
+      catch std.debug.panic("[CORE]: Expected a function", .{});
+  }
+
+
+  fn userdataArrayToSlice(ctx: *Lua, index: i32,
                      comptime T: type, allocator: std.mem.Allocator) ![]T {
-    // make a copy of the array on the top of the stack so we can pass
-    // both positive and negative values for index
     ctx.pushValue(index);
 
-    // get the length of the array
     ctx.len(-1);
     const len = @intCast(usize, try ctx.toInteger(-1));
     ctx.pop(1); // ctx.len
 
-    // arraylist for temporary storage since VLAs don't exist
     var array = try std.ArrayList(T).initCapacity(allocator, len);
 
-    // get each element
     var i: isize = 1;
     while (i <= len) : (i += 1) {
-      // get element from table
       ctx.pushInteger(i);
       const elem_type = ctx.getTable(-2);
       if (elem_type != ziglua.LuaType.userdata) return error.WrongType;
 
-      // stick it in the arraylist
       const elem = (try ctx.toUserdata(T, -1)).*;
       try array.append(elem);
 
       ctx.pop(1); // ctx.getTable
     }
 
-    // remove copy from earlier and return a slice of the arraylist
     ctx.pop(1); // ctx.pushValue
     return try array.toOwnedSlice();
+  }
+
+
+  pub fn expectUserdata(ctx: *Lua, index: i32,
+                        comptime T: type, allocator: std.mem.Allocator) []T {
+    return userdataArrayToSlice(ctx, index, T, allocator)
+      catch std.debug.panic("[CORE]: Expected {any} userdata", .{ T });
+  }
+
+
+  fn getGame(ctx: *Lua) !*game_lib.Game {
+    const kind = try ctx.getGlobal(game_table);
+    if (kind != ziglua.LuaType.userdata and
+        kind != ziglua.LuaType.light_userdata)
+      return error.WrongType;
+
+    var game = try ctx.toUserdata(game_lib.Game, -1);
+    ctx.pop(1);
+
+    return game;
   }
 
 
@@ -140,31 +164,19 @@ pub const LuaAPI = struct {
   ///                tiles: ?[]TileType,
   ///                creatures: ?[]CreatureType) void
   fn registerMod(ctx: *Lua) i32 {
-    // get game data struct from lua
-    _ = ctx.getGlobal(game_table) catch unreachable;
-    var game = ctx.toUserdata(game_lib.Game, -1) catch unreachable;
-    ctx.pop(1); // ctx.getGlobal
+    var game = getGame(ctx) catch std.debug.panic(
+      "[CORE]: expected game", .{});
 
-    // get arguments
-    const mod_name = ctx.toString(-4)
-      catch std.debug.panic("{s}\n", .{ error_messages[0] });
+    const mod_name = expectString(ctx, -4);
 
-    const tiles = userdataArrayToSlice(ctx, -3, TileType, game.allocator)
-      catch std.debug.panic("{s}\n", .{ error_messages[1] });
+    const tiles = expectUserdata(ctx, -3, TileType, game.allocator);
+    const creatures = expectUserdata(ctx, -2, CreatureType, game.allocator);
+    const generators = expectUserdata(ctx, -1, WorldGenerator, game.allocator);
 
-    const creatures = userdataArrayToSlice(ctx, -2, CreatureType,
-      game.allocator)
-      catch std.debug.panic("{s}\n", .{ error_messages[2] });
-
-    const generators = userdataArrayToSlice(ctx, -1, WorldGenerator,
-      game.allocator)
-      catch std.debug.panic("{s}\n", .{ error_messages[3] });
-
-
-    // create mod and add to list of mods
     const mod = Mod.init(mod_name[0..std.mem.len(mod_name)], tiles,
                          creatures, generators);
-    game.mods.append(mod) catch unreachable; // TODO: handle error
+    game.mods.append(mod) catch std.debug.panic(
+      "[CORE]: couldn't register mod", .{});
 
     return 0;
   }
@@ -172,9 +184,8 @@ pub const LuaAPI = struct {
 
   // TODO: a more sophisticated solution that'd allow multithreaded modloading
   pub fn getModID(ctx: *Lua) i32 {
-    _ = ctx.getGlobal(game_table) catch unreachable;
-    var game = ctx.toUserdata(game_lib.Game, -1) catch unreachable;
-    ctx.pop(1);
+    var game = getGame(ctx) catch std.debug.panic(
+      "[CORE]: expected game", .{});
 
     ctx.pushInteger(@intCast(isize, game.mods.items.len));
     return 1;
