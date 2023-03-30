@@ -41,7 +41,7 @@ pub const WorldGenerator = struct {
   /// fn fromLua(name: []const u8, reference: fn) WorldGenerator
   pub fn fromLua(ctx: *Lua) i32 {
     const name = LuaAPI.expectString(ctx, -2);
-    const reference = LuaAPI.registerFunction(ctx);
+    const reference = LuaAPI.expectAndRegisterFunction(ctx);
 
     const worldgen = ctx.newUserdata(WorldGenerator, 0);
     worldgen.name = name[0..std.mem.len(name)];

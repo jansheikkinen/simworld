@@ -62,6 +62,8 @@ pub const LuaAPI = struct {
 
 
   fn initAPI(self: *LuaAPI) void {
+    // i'm told that just opening all libs is a terrible idea, and that i
+    // should instead sandbox the lua environment; to that i say "haha no lmao"
     self.lua.openLibs();
     self.lua.newLib(&functions);
     self.lua.setGlobal(name);
@@ -107,14 +109,14 @@ pub const LuaAPI = struct {
   }
 
 
-  pub fn registerFunction(ctx: *Lua) i32 {
+  pub fn expectAndRegisterFunction(ctx: *Lua) i32 {
     return ctx.ref(ziglua.registry_index)
       catch std.debug.panic("[CORE]: Expected a function", .{});
   }
 
 
   fn userdataArrayToSlice(ctx: *Lua, index: i32,
-                     comptime T: type, allocator: std.mem.Allocator) ![]T {
+                          comptime T: type, allocator: std.mem.Allocator) ![]T {
     ctx.pushValue(index);
 
     ctx.len(-1);
