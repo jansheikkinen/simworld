@@ -14,15 +14,44 @@ const Tile = @import("tile.zig").Tile;
 const Vector2 = @import("vector.zig").Vector2;
 
 
-pub const Options = struct {
+const OptItems = struct {
   base_path:  []const u8 = "./",
   world_path: []const u8 = "worlds/",
   mod_path:   []const u8 = "mods/",
 };
 
 
+pub const Options = struct {
+  const config_path = "~/.config/simworld/config.json";
+
+  allocator: ?std.mem.Allocator = null,
+  items: OptItems = OptItems { },
+
+
+  pub fn initFromJSON(allocator: std.mem.Allocator, file: []const u8) !Options {
+    const fd = try std.fs.cwd().openFile(file, .{ .mode = .read_only });
+    defer fd.close();
+
+    const buffer = try fd.readToEndAlloc(allocator, std.math.maxInt(u64));
+    defer allocator.free(buffer);
+
+    var stream = std.json.TokenStream.init(buffer);
+    const items = try std.json.parse(OptItems, &stream, .{
+      .allocator = allocator
+    });
+
+    return Options { .allocator = allocator, .items = items };
+  }
+
+
+  pub fn deinit(self: *Options) void {
+    std.json.parseFree(OptItems, self.items, .{ .allocator = self.allocator });
+  }
+};
+
+
 pub const Game = struct {
-  options: Options = Options { },
+  options: Options,
 
   allocator: std.mem.Allocator,
   mods: std.ArrayList(Mod),
@@ -30,15 +59,19 @@ pub const Game = struct {
   world: ?World = null,
 
 
-  pub fn init(allocator: std.mem.Allocator) Game {
+  pub fn init(allocator: std.mem.Allocator, options_file: ?[]const u8) !Game {
     return Game {
       .allocator = allocator,
+      .options = if (options_file) |file|
+        try Options.initFromJSON(allocator, file)
+      else Options { },
       .mods = std.ArrayList(Mod).init(allocator)
     };
   }
 
 
   pub fn deinit(self: *Game) void {
+    if (self.options.allocator != null) self.options.deinit();
     if (self.world != null) self.world.?.deinit();
 
     var i: usize = 0;

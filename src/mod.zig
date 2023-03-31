@@ -79,8 +79,8 @@ pub const LuaAPI = struct {
   fn loadMods(self: *LuaAPI, game: *game_lib.Game) !void {
     const path = try std.mem.concatWithSentinel(game.allocator, u8,
       &[_][]const u8 {
-        game.options.base_path,
-        game.options.mod_path,
+        game.options.items.base_path,
+        game.options.items.mod_path,
         "base/init.lua"
       }, 0);
     defer game.allocator.free(path);

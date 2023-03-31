@@ -18,7 +18,7 @@ pub fn main() anyerror!void {
   const allocator = gpa.allocator();
 
 
-  var game = Game.init(allocator);
+  var game = try Game.init(allocator, "./config.json");
   defer game.deinit();
 
 
